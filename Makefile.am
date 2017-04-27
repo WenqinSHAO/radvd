@@ -96,7 +96,10 @@ radvd_SOURCES = \
 	process.c \
 	radvd.c \
 	send.c \
-	timer.c
+	timer.c \
+	trigger.c \
+	trigger.h \
+	pvd.h
 
 radvdump_SOURCES = \
 	defaults.h \
@@ -162,6 +165,7 @@ EXTRA_DIST = \
 	test/print_safe_buffer.h \
 	test/send.c \
 	test/test1.conf \
+	test/test2.conf \
 	test/test_rdnss.conf \
 	test/util.c
 
@@ -262,6 +266,9 @@ check_all_SOURCES = \
 	log.c \
 	send.c \
 	timer.c \
+	trigger.c \
+	trigger.h \
+	pvd.h \
 	util.c
 
 check_all_CFLAGS = \

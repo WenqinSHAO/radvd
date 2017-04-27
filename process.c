@@ -296,8 +296,6 @@ static void process_ra(struct Interface *iface, unsigned char *msg, int len, str
 			char rdnss_str[INET6_ADDRSTRLEN];
 			struct AdvRDNSS *rdnss = 0;
 			struct nd_opt_rdnss_info_local *rdnssinfo = (struct nd_opt_rdnss_info_local *)opt_str;
-			if (len < sizeof(*rdnssinfo))
-				return;
 			int count = rdnssinfo->nd_opt_rdnssi_len;
 
 			/* Check the RNDSS addresses received */

@@ -41,10 +41,25 @@
 		} \
 	} while (0)
 
+/* append linked list items for the pvd id option */ 
+/* i know it's urgly, let me see later how to do better */
+#define ADD_TO_LL_PVD(type, list, value) \
+	do { \
+		if (pvd->list == NULL) \
+			pvd->list = value; \
+		else { \
+			type *current = pvd->list; \
+			while (current->next != NULL) \
+				current = current->next; \
+			current->next = value; \
+		} \
+	} while (0)
+
 %}
 
 %token		T_INTERFACE
 %token		T_PREFIX
+%token		T_PVD
 %token		T_ROUTE
 %token		T_RDNSS
 %token		T_DNSSL
@@ -76,6 +91,12 @@
 %token		T_AdvDefaultLifetime
 %token		T_AdvDefaultPreference
 %token		T_AdvSourceLLAddress
+
+%token		T_AdvPvdIdSequenceNumber
+%token		T_AdvPvdIdHttpExtraInfo
+%token		T_AdvPvdIdLegacy
+%token		T_AdvPvdIdLifetime
+%token 		T_AdvPvdAdvHeader
 
 %token		T_AdvOnLink
 %token		T_AdvAutonomous
@@ -133,6 +154,7 @@
 %type   <abroinfo> abrodef
 %type   <num>	number_or_infinity
 %type	<rasrcaddressinfo> rasrcaddresslist v6addrlist_rasrcaddress
+%type 	<pvdinfo> pvdidoption
 
 %union {
 	unsigned int		num;
@@ -148,6 +170,7 @@
 	struct AdvLowpanCo	*lowpancoinfo;
 	struct AdvAbro		*abroinfo;
 	struct AdvRASrcAddress	*rasrcaddressinfo;
+	struct AdvPvd		*pvdinfo;
 };
 
 %{
@@ -161,6 +184,7 @@ static struct AdvRDNSS *rdnss;
 static struct AdvDNSSL *dnssl;
 static struct AdvLowpanCo *lowpanco;
 static struct AdvAbro  *abro;
+static struct AdvPvd *pvd;
 static void cleanup(void);
 #define ABORT	do { cleanup(); YYABORT; } while (0);
 static void yyerror(char const * msg);
@@ -232,6 +256,7 @@ ifaceparam 	: ifaceval
 		| lowpancodef   { ADD_TO_LL(struct AdvLowpanCo, AdvLowpanCoList, $1); }
 		| abrodef       { ADD_TO_LL(struct AdvAbro, AdvAbroList, $1); }
 		| rasrcaddresslist { ADD_TO_LL(struct AdvRASrcAddress, AdvRASrcAddressList, $1); }
+		| pvdidoption {iface->pvd_id_option = $1; } 
 		;
 
 ifaceval	: T_MinRtrAdvInterval NUMBER ';'
@@ -337,6 +362,149 @@ ifaceval	: T_MinRtrAdvInterval NUMBER ';'
 			iface->mipv6.AdvMobRtrSupportFlag = $2;
 		}
 		;
+
+pvdidoption : pvdhead '{' pvdparams '}' ';'
+			{
+				$$ = pvd;
+				pvd = NULL;
+			}
+			;
+
+pvdhead		: T_PVD STRING 
+			{
+				if (iface->pvd_id_option) {
+					flog(LOG_WARNING, 
+						 "multiple PvD ID option found in interface %s,\
+						 only the last one is considered.", iface->props.name);
+				}
+
+				pvd = malloc(sizeof(struct AdvPvd));
+				
+				if (pvd == NULL) {
+					flog(LOG_CRIT, "malloc failed: %s", strerror(errno));
+					ABORT;
+				}
+
+				pvd_init_defaults(pvd);
+				strncpy(pvd->AdvPvdId, $2, PVDIDNAMSIZ-1);
+				pvd->AdvPvdId[PVDIDNAMSIZ-1] = '\0';
+			}
+			;
+
+pvdparams 	: pvdparams pvdparam
+			| 
+			;
+
+pvdparam	: T_AdvPvdIdSequenceNumber NUMBER ';'
+			{
+				pvd->AdvPvdIdSeq = $2 & 0x0FFFF;
+			}
+			| T_AdvPvdIdHttpExtraInfo SWITCH  ';'
+			{
+				pvd->AdvPvdIdHttpExtraInfo = $2;
+			}
+			| T_AdvPvdIdLegacy SWITCH ';'
+			{
+				pvd->AdvPvdIdLegacy = $2;
+			}
+			| T_AdvPvdAdvHeader SWITCH ';'
+			{
+				pvd->AdvPvdAdvHeader = $2;
+			}
+			// ra header info
+			// see if warning is needed when A-flag is not set and there is ra head options present
+			// maybe handle it during serialization
+			| T_AdvManagedFlag SWITCH ';'
+			{
+				pvd->ra_header_info.AdvManagedFlag = $2;
+			}
+			| T_AdvOtherConfigFlag SWITCH ';'
+			{
+				pvd->ra_header_info.AdvOtherConfigFlag = $2;
+			}
+			| T_AdvReachableTime NUMBER ';'
+			{
+				pvd->ra_header_info.AdvReachableTime = $2;
+			}
+			| T_AdvRetransTimer NUMBER ';'
+			{
+				pvd->ra_header_info.AdvRetransTimer = $2;
+			}
+			| T_AdvDefaultLifetime NUMBER ';'
+			{
+				pvd->ra_header_info.AdvDefaultLifetime = $2;
+			}
+			| T_AdvDefaultPreference SIGNEDNUMBER ';'
+			{
+				pvd->ra_header_info.AdvDefaultPreference = $2;
+			}
+			| T_AdvCurHopLimit NUMBER ';'
+			{
+				pvd->ra_header_info.AdvCurHopLimit = $2;
+			}
+			| T_AdvHomeAgentFlag SWITCH ';'
+			{
+				pvd->ra_header_info.AdvHomeAgentFlag = $2;
+			}
+			// other classic RA options
+			| prefixdef
+			{
+				ADD_TO_LL_PVD(struct AdvPrefix, AdvPrefixList, $1);
+			}
+			| routedef
+			{
+				ADD_TO_LL_PVD(struct AdvRoute, AdvRouteList, $1);
+			}
+			| rdnssdef
+			{
+				ADD_TO_LL_PVD(struct AdvRDNSS, AdvRDNSSList, $1);
+			}
+			| dnssldef
+			{
+				ADD_TO_LL_PVD(struct AdvDNSSL, AdvDNSSLList, $1);
+			}
+			| lowpancodef
+			{
+				ADD_TO_LL_PVD(struct AdvLowpanCo, AdvLowpanCoList, $1);
+			}
+			| abrodef
+			{
+				ADD_TO_LL_PVD(struct AdvAbro, AdvAbroList, $1);
+			}
+			| T_AdvLinkMTU NUMBER ';'
+			{
+				pvd->AdvLinkMTU = $2;
+			}
+			| T_AdvRAMTU NUMBER ';'
+			{
+				pvd->AdvRAMTU = $2;
+				pvd->AdvRAMTU = MAX(MIN_AdvLinkMTU, pvd->AdvRAMTU);
+				pvd->AdvRAMTU = MIN(MAX_AdvLinkMTU, pvd->AdvRAMTU);
+			}
+			// mipv6
+			| T_AdvIntervalOpt SWITCH ';'
+			{
+				pvd->mipv6.AdvIntervalOpt = $2;
+			}
+			| T_AdvHomeAgentInfo SWITCH ';'
+			{
+				pvd->mipv6.AdvHomeAgentInfo = $2;
+			}
+			| T_HomeAgentPreference NUMBER ';'
+			{
+				pvd->mipv6.HomeAgentPreference = $2;
+			}
+			| T_HomeAgentLifetime NUMBER ';'
+			{
+				pvd->mipv6.HomeAgentLifetime = $2;
+			}	
+			| T_AdvMobRtrSupportFlag SWITCH ';'
+			{
+				pvd->mipv6.AdvMobRtrSupportFlag = $2;
+			}
+			// it seems that sllao option is not implemented previously
+			;
+
 
 clientslist	: T_CLIENTS '{' v6addrlist_clients '}' ';'
 		{

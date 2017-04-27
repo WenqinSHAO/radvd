@@ -44,6 +44,7 @@ string		[a-zA-Z0-9`~!@#$%\^&*()_\-+=:\[\]<>,\.?\\]+
 
 interface		{ return T_INTERFACE; }
 prefix			{ return T_PREFIX; }
+pvd			{ return T_PVD; }
 route			{ return T_ROUTE; }
 RDNSS			{ return T_RDNSS; }
 DNSSL			{ return T_DNSSL; }
@@ -66,6 +67,11 @@ AdvCurHopLimit		{ return T_AdvCurHopLimit; }
 AdvDefaultLifetime	{ return T_AdvDefaultLifetime; }
 AdvDefaultPreference	{ return T_AdvDefaultPreference; }
 AdvSourceLLAddress	{ return T_AdvSourceLLAddress; }
+
+AdvPvdIdSequenceNumber	{ return T_AdvPvdIdSequenceNumber; }
+AdvPvdIdHttpExtraInfo	{ return T_AdvPvdIdHttpExtraInfo; }
+AdvPvdIdLegacy		{ return T_AdvPvdIdLegacy; }
+AdvPvdAdvHeader		{ return T_AdvPvdAdvHeader; }
 
 AdvOnLink		{ return T_AdvOnLink; }
 AdvAutonomous		{ return T_AdvAutonomous; }

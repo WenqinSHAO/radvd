@@ -29,12 +29,12 @@ static void update_iface_times(struct Interface *iface);
 static size_t serialize_domain_names(struct safe_buffer *safe_buffer, struct AdvDNSSL const *dnssl);
 
 // Options that only need a single block
-static void add_ra_header(struct safe_buffer *sb, struct ra_header_info const *ra_header_info, int cease_adv);
+static void add_ra_header(struct safe_buffer *sb, struct AdvRaHeaderInfo const *ra_header_info, int cease_adv);
 static void add_ra_option_prefix(struct safe_buffer *sb, struct AdvPrefix const *prefix, int cease_adv);
 static void add_ra_option_mtu(struct safe_buffer *sb, uint32_t AdvLinkMTU);
-static void add_ra_option_sllao(struct safe_buffer *sb, struct sllao const *sllao);
+static void add_ra_option_sllao(struct safe_buffer *sb, struct AdvSllao const *sllao);
 static void add_ra_option_mipv6_rtr_adv_interval(struct safe_buffer *sb, double MaxRtrAdvInterval);
-static void add_ra_option_mipv6_home_agent_info(struct safe_buffer *sb, struct mipv6 const *mipv6);
+static void add_ra_option_mipv6_home_agent_info(struct safe_buffer *sb, struct AdvMipv6 const *mipv6);
 static void add_ra_option_lowpanco(struct safe_buffer *sb, struct AdvLowpanCo const *lowpanco);
 static void add_ra_option_abro(struct safe_buffer *sb, struct AdvAbro const *abroo);
 
@@ -48,6 +48,8 @@ static struct safe_buffer_list *add_ra_options_rdnss(struct safe_buffer_list *sb
 						     struct AdvRDNSS const *rdnss, int cease_adv, struct in6_addr const *dest);
 static struct safe_buffer_list *add_ra_options_dnssl(struct safe_buffer_list *sbl, struct Interface const *iface,
 						     struct AdvDNSSL const *dnssl, int cease_adv, struct in6_addr const *dest);
+static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl, struct Interface const *iface,
+							  char const *ifname, struct AdvPvd const *p, struct in6_addr const *dest);
 
 // Scheduling of options per RFC7772
 static int schedule_helper(struct in6_addr const *dest, struct Interface const *iface, int option_lifetime);
@@ -182,7 +184,7 @@ static void update_iface_times(struct Interface *iface)
 *       add_ra_*                                                                *
 ********************************************************************************/
 
-static void add_ra_header(struct safe_buffer *sb, struct ra_header_info const *ra_header_info, int cease_adv)
+static void add_ra_header(struct safe_buffer *sb, struct AdvRaHeaderInfo const *ra_header_info, int cease_adv)
 {
 	struct nd_router_advert radvert;
 
@@ -534,7 +536,7 @@ static struct safe_buffer_list *add_ra_options_dnssl(struct safe_buffer_list *sb
 /*
  * add Source Link-layer Address option
  */
-static void add_ra_option_sllao(struct safe_buffer *sb, struct sllao const *sllao)
+static void add_ra_option_sllao(struct safe_buffer *sb, struct AdvSllao const *sllao)
 {
 	/* +2 for the ND_OPT_SOURCE_LINKADDR and the length (each occupy one byte) */
 	size_t const sllao_bytes = (sllao->if_hwaddr_len / 8) + 2;
@@ -592,7 +594,7 @@ static void add_ra_option_mipv6_rtr_adv_interval(struct safe_buffer *sb, double 
  * Mobile IPv6 ext: Home Agent Information Option to support
  * Dynamic Home Agent Address Discovery
  */
-static void add_ra_option_mipv6_home_agent_info(struct safe_buffer *sb, struct mipv6 const *mipv6)
+static void add_ra_option_mipv6_home_agent_info(struct safe_buffer *sb, struct AdvMipv6 const *mipv6)
 {
 	struct HomeAgentInfo ha_info;
 
@@ -643,10 +645,133 @@ static void add_ra_option_abro(struct safe_buffer *sb, struct AdvAbro const *abr
 	safe_buffer_append(sb, &abro, sizeof(abro));
 }
 
+static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl, 
+													struct Interface const *iface,
+													char const *ifname, 
+													struct AdvPvd const *p, 
+													struct in6_addr const *dest) {
+	
+	int len = 6; // type +length + flag +seq = 6 bytes minumum as size
+	int bytes = 0;
+	int padding_in_byte = 0;
+	struct nd_opt_pvdid pvdid;
+	struct safe_buffer *fqdn = new_safe_buffer();
+	struct safe_buffer *pvdraheader = new_safe_buffer();
+	struct safe_buffer_list *pvdoptions = new_safe_buffer_list();
+	struct safe_buffer_list *cur = pvdoptions;
+
+	memset(&pvdid, 0, sizeof(pvdid));
+
+	pvdid.nd_opt_pvdid_type = ND_OPT_PVDID;
+	pvdid.nd_opt_pvdid_len = 0;	/* will be updated when we know the rest */
+	pvdid.nd_opt_pvdid_sequence = htons(p->AdvPvdIdSeq);
+	pvdid.nd_opt_pvdid_flags = htons((p->AdvPvdIdHttpExtraInfo << 15) |
+									 (p->AdvPvdIdLegacy << 14) |
+									 (p-> AdvPvdAdvHeader << 13));
+
+	// ugly repeating code in serialize_domain_names to format PvD ID wich is a FQDN
+	char *label = p->AdvPvdId;
+	while(label[0] != '\0') {
+		unsigned char label_len;
+
+		if (strchr(label, '.') == NULL)
+			label_len = (unsigned char)strlen(label);
+		else
+			label_len = (unsigned char)(strchr(label, '.') - label);
+
+		safe_buffer_append(fqdn, &label_len, sizeof(label_len));
+		safe_buffer_append(fqdn, label, label_len);
+
+		label += label_len;
+
+		if (label[0] == '.') {
+			label ++;
+		}
+
+		if (label[0] == '\0') {
+			char zero = 0;
+			safe_buffer_append(fqdn, &zero, sizeof(zero));
+		}
+	}
+
+	// handle padding
+	bytes = len + fqdn->used;
+	padding_in_byte = (bytes + 7)/8 * 8 - bytes;
+	safe_buffer_pad(fqdn, padding_in_byte);
+
+	len += fqdn->used;
+
+	// ra header in case A-flag is set
+	// disregard the iface status info adv cease flag, set manually to 0
+	if (p->AdvPvdAdvHeader) {
+		add_ra_header(pvdraheader, &p->ra_header_info, 0);
+		len += pvdraheader->used;
+	}
+	
+	// ugly repeating code in build_ra_option
+	// disregard the iface status info adv cease flag, set manually to 0
+	if(p->AdvPrefixList) {
+		cur = add_ra_options_prefix(cur, iface, iface->props.name, p->AdvPrefixList, 0, dest);
+	}
+	if(p->AdvRouteList) {
+		cur = add_ra_options_route(cur, iface, p->AdvRouteList, 0, dest);
+	}
+	if(p->AdvRDNSSList) {
+		cur = add_ra_options_rdnss(cur, iface, p->AdvRDNSSList, 0, dest);
+	}
+	if(p->AdvDNSSLList) {
+		cur = add_ra_options_dnssl(cur, iface, p->AdvDNSSLList, 0, dest);
+	}
+	if(p->AdvLinkMTU != 0){
+		cur->next = new_safe_buffer_list();
+		cur = cur->next;
+		add_ra_option_mtu(cur->sb, p->AdvLinkMTU);
+	}
+	// Seems that AdvRAMTU is not used here, maybe in RA message segmentation rather
+	// TODO: add other options ra options later on
+	// TODO: design pattern not optimal, everytime a new option add to RA, 
+	// the pvdid code has to be changed as well...
+	// TODO: have to ensure somehow when RA segmentation happens, the PvD ID option must present
+	// in each segment
+
+	// sum up the length of all options
+	cur = pvdoptions;
+	while(cur && cur->next != NULL) { // stops at the last element of the linked list
+		len += cur->sb->used;
+		cur = cur->next;
+	}
+	len += cur ? cur->sb->used : 0; // in case cur/pvdoptions is NULL, add 0 to total length
+	pvdid.nd_opt_pvdid_len = len/8;
+
+	//assemble everything together
+	sbl = safe_buffer_list_append(sbl);
+	safe_buffer_append(sbl->sb, &pvdid, sizeof(pvdid));
+
+	sbl = safe_buffer_list_append(sbl);
+	sbl->sb = fqdn;
+
+	if (pvdraheader) {
+		sbl = safe_buffer_list_append(sbl);
+		sbl->sb = pvdraheader;
+	}
+
+	if (pvdoptions) {
+		sbl->next = pvdoptions;
+		return cur;
+	} else {
+		return sbl;
+	}
+
+}
+
 static struct safe_buffer_list *build_ra_options(struct Interface const *iface, struct in6_addr const *dest)
 {
 	struct safe_buffer_list *sbl = new_safe_buffer_list();
 	struct safe_buffer_list *cur = sbl;
+
+	if (iface->pvd_id_option) {
+		cur = add_ra_option_pvdid(cur, iface, iface->props.name, iface->pvd_id_option, dest);
+	}
 
 	if (iface->AdvPrefixList) {
 		cur =
@@ -726,6 +851,12 @@ static int send_ra(int sock, struct Interface *iface, struct in6_addr const *des
 	char src_text[INET6_ADDRSTRLEN] = {""};
 	addrtostr(dest, dest_text, INET6_ADDRSTRLEN);
 	addrtostr(iface->props.if_addr_rasrc, src_text, INET6_ADDRSTRLEN);
+#ifdef __MACH__
+	/* Probably not the most suitable place to change the source Link Local address...
+		but see https://www.freebsd.org/doc/en/books/developers-handbook/ipv6.html#ipv6-scope-index */
+	iface->props.if_addr_rasrc->s6_addr[3] = iface->props.if_index % 256 ;
+	iface->props.if_addr_rasrc->s6_addr[2] = iface->props.if_index >> 8 ;
+#endif
 
 	// Build RA header
 	struct safe_buffer *ra_hdr = new_safe_buffer();
@@ -824,6 +955,9 @@ static int really_send(int sock, struct in6_addr const *dest, struct properties 
 {
 	struct sockaddr_in6 addr;
 	memset((void *)&addr, 0, sizeof(addr));
+#ifdef	SIN6_LEN
+	addr.sin6_len = sizeof(struct sockaddr_in6) ; // Let's be clean
+#endif
 	addr.sin6_family = AF_INET6;
 	addr.sin6_port = htons(IPPROTO_ICMPV6);
 	memcpy(&addr.sin6_addr, dest, sizeof(struct in6_addr));
@@ -845,8 +979,18 @@ static int really_send(int sock, struct in6_addr const *dest, struct properties 
 	memcpy(&pkt_info->ipi6_addr, props->if_addr_rasrc, sizeof(struct in6_addr));
 
 #ifdef HAVE_SIN6_SCOPE_ID
-	if (IN6_IS_ADDR_LINKLOCAL(&addr.sin6_addr) || IN6_IS_ADDR_MC_LINKLOCAL(&addr.sin6_addr))
+	if (IN6_IS_ADDR_LINKLOCAL(&addr.sin6_addr) || IN6_IS_ADDR_MC_LINKLOCAL(&addr.sin6_addr)) {
+		dlog(LOG_DEBUG, 5, "sending to a link scoped address for interface #%d", props->if_index) ;
 		addr.sin6_scope_id = props->if_index;
+#ifdef __MACH__
+		/* According to https://www.freebsd.org/doc/en/books/developers-handbook/ipv6.html#ipv6-scope-index, BSD (including Mac OS/X needs to embed the interface index in the address !!! */
+		addr.sin6_addr.s6_addr[3] = props->if_index % 256 ; 
+		addr.sin6_addr.s6_addr[2] = props->if_index >> 8 ; 
+		char dest_text[INET6_ADDRSTRLEN] = {""};
+		addrtostr(&addr.sin6_addr, dest_text, INET6_ADDRSTRLEN);
+		dlog(LOG_DEBUG, 5, "modified link-local destination address for BSD -> %s", dest_text) ;
+#endif
+	}
 #endif
 
 	struct msghdr mhdr;

@@ -183,7 +183,11 @@ static struct Interface *iface = 0;
 static void iface_setup(void)
 {
 	ck_assert_ptr_eq(0, iface);
+#if	0
 	iface = readin_config("test/test1.conf");
+#else
+	iface = readin_config("test/test2.conf");
+#endif
 	ck_assert_ptr_ne(0, iface);
 }
 

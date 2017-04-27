@@ -105,3 +105,9 @@
 #ifdef HAVE_LINUX_IF_ARP_H
 #include <linux/if_arp.h>
 #endif
+
+#ifdef __MACH__
+#include <mach/mach_time.h>
+#define CLOCK_MONOTONIC 0
+int clock_gettime(clock_id_t clk_id, struct timespec *tp);
+#endif

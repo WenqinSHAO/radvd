@@ -437,6 +437,23 @@ static void print_ff(unsigned char *msg, int len, struct sockaddr_in6 *addr, int
 			printf("\t}; # End of DNSSL definition\n\n");
 			break;
 		}
+		case ND_OPT_PVDID : {
+			struct nd_opt_pvdid *pvdid = (struct nd_opt_pvdid *) opt_str;
+			int seq, h, l;
+			uint16_t flags = ntohs(pvdid->nd_opt_pvdid_flags);
+
+			seq = ntohs(pvdid->nd_opt_pvdid_sequence);
+			h = (flags >> 15) & 0x01;
+			l = (flags >> 14) & 0x01;
+
+			//printf("\n\tpvd %s {\n", pvdid->nd_opt_pvdid_name);
+			printf("\t\tAdvPvdIdSequenceNumber %d;\n", seq);
+			printf("\t\tAdvPvdIdHttpExtraInfo %s;\n", h ? "on" : "off");
+			printf("\t\tAdvPvdIdLegacy %s;\n", l ? "on" : "off");
+			printf("\t]; # End of PVD definition\n\n");
+
+			break;
+		}
 		default:
 			break;
 		}

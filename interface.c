@@ -47,6 +47,37 @@ void iface_init_defaults(struct Interface *iface)
 
 	iface->AdvLinkMTU = DFLT_AdvLinkMTU;
 	iface->AdvRAMTU = DFLT_AdvRAMTU;
+
+}
+
+/* initialize AdvPvd with default values */
+// TODO: ra_header_info is better to be a pointer type
+// TODO: very redundent code with the Interface struct, do better
+void pvd_init_defaults(struct AdvPvd *p) {
+	memset(p, 0, sizeof(struct AdvPvd));
+
+	p->AdvPvdId[0] = '\0';
+	p->AdvPvdIdSeq = 0;
+	
+	p->AdvPvdIdHttpExtraInfo = 0;
+	p->AdvPvdIdLegacy = 0;
+	p->AdvPvdAdvHeader = 0;
+
+	p->ra_header_info.AdvDefaultPreference = DFLT_AdvDefaultPreference;
+	p->ra_header_info.AdvDefaultLifetime = -1;
+	p->ra_header_info.AdvReachableTime = DFLT_AdvReachableTime;
+	p->ra_header_info.AdvRetransTimer = DFLT_AdvRetransTimer;
+	p->ra_header_info.AdvCurHopLimit = DFLT_AdvCurHopLimit;
+	p->ra_header_info.AdvHomeAgentFlag = DFLT_AdvHomeAgentFlag;
+
+	p->AdvLinkMTU = DFLT_AdvLinkMTU;
+	p->AdvRAMTU = DFLT_AdvRAMTU;
+
+	p->mipv6.AdvIntervalOpt = DFLT_AdvIntervalOpt;
+	p->mipv6.AdvHomeAgentInfo = DFLT_AdvHomeAgentInfo;
+	p->mipv6.HomeAgentPreference = DFLT_HomeAgentPreference;
+	p->mipv6.AdvMobRtrSupportFlag = DFLT_AdvMobRtrSupportFlag;
+	p->mipv6.HomeAgentLifetime = -1;
 }
 
 void touch_iface(struct Interface *iface)

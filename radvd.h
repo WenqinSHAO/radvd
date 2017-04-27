@@ -19,6 +19,7 @@
 #include "defaults.h"
 #include "includes.h"
 #include "log.h"
+#include "pvd.h"
 
 #define CONTACT_EMAIL "Reuben Hawkins <reubenhwk@gmail.com>"
 
@@ -34,6 +35,7 @@ struct Clients;
 #define HWADDR_MAX 16
 #define USER_HZ 100
 
+
 struct safe_buffer {
 	int should_free;
 	size_t allocated;
@@ -47,6 +49,75 @@ struct safe_buffer {
 struct safe_buffer_list {
 	struct safe_buffer *sb;
 	struct safe_buffer_list *next;
+};
+
+
+// TODO: use pointer instead of inclusion for those optional strucutres
+
+/* structure for RA header*/
+
+struct AdvRaHeaderInfo {
+	int AdvManagedFlag;
+	int AdvOtherConfigFlag;
+	uint8_t AdvCurHopLimit;
+	int AdvHomeAgentFlag;
+	int32_t AdvDefaultLifetime; /* XXX: really uint16_t but we need to use -1 */
+	int AdvDefaultPreference;
+	uint32_t AdvReachableTime;
+	uint32_t AdvRetransTimer;
+};
+
+/* structure for ? RFC 6275? */
+/* doesn't seem to match any structure defined in RFC 6275;
+and is sort of redundent with struct HomeAgentInfo defined a bit later;
+the later structure doesn't seem used somewhere within the scope of radvd */
+struct AdvMipv6 {
+	/* Mobile IPv6 extensions */
+	int AdvIntervalOpt;
+	int AdvHomeAgentInfo;
+
+	uint16_t HomeAgentPreference;
+	int32_t HomeAgentLifetime; /* XXX: really uint16_t but we need to use -1 */
+
+	/* NEMO extensions */
+	int AdvMobRtrSupportFlag;
+};
+
+/* strucutre for source link-layer address option */
+
+struct AdvSllao {
+	uint8_t if_hwaddr[HWADDR_MAX];
+	int if_hwaddr_len;
+	int if_prefix_len;
+	int if_maxmtu;
+};
+
+/* data structure for PvD ID option */
+
+struct AdvPvd {
+	/* things that identify a PvD ID option, along with LLA sending out the RA*/
+	char AdvPvdId[PVDIDNAMSIZ];
+	int AdvPvdIdSeq;
+
+	/* PvD ID flags */
+	int AdvPvdIdHttpExtraInfo;
+	int AdvPvdIdLegacy;
+	int AdvPvdAdvHeader;
+
+	/* serialized only when AdvPvdHeader is set */
+	struct AdvRaHeaderInfo ra_header_info; 
+	
+	/* PvD ID option can containe all the other classic RA options */
+	struct AdvPrefix *AdvPrefixList;
+	struct AdvRoute *AdvRouteList;
+	struct AdvRDNSS *AdvRDNSSList;
+	struct AdvDNSSL *AdvDNSSLList;
+	uint32_t AdvLinkMTU;
+	uint32_t AdvRAMTU;
+	struct AdvSllao sllao;
+	struct AdvMipv6 mipv6;
+	struct AdvLowpanCo *AdvLowpanCoList;
+	struct AdvAbro *AdvAbroList;
 };
 
 struct Interface {
@@ -78,16 +149,7 @@ struct Interface {
 		uint32_t max_ra_option_size;
 	} props;
 
-	struct ra_header_info {
-		int AdvManagedFlag;
-		int AdvOtherConfigFlag;
-		uint8_t AdvCurHopLimit;
-		int AdvHomeAgentFlag;
-		int32_t AdvDefaultLifetime; /* XXX: really uint16_t but we need to use -1 */
-		int AdvDefaultPreference;
-		uint32_t AdvReachableTime;
-		uint32_t AdvRetransTimer;
-	} ra_header_info;
+	struct AdvRaHeaderInfo  ra_header_info;
 
 	struct times {
 		struct timespec last_multicast;
@@ -103,27 +165,17 @@ struct Interface {
 	uint32_t AdvLinkMTU; /* XXX: sllao also has an if_maxmtu value...Why? */
 	uint32_t AdvRAMTU;   /* MTU used for RA */
 
-	struct sllao {
-		uint8_t if_hwaddr[HWADDR_MAX];
-		int if_hwaddr_len;
-		int if_prefix_len;
-		int if_maxmtu;
-	} sllao;
+	struct AdvSllao sllao;
 
-	struct mipv6 {
-		/* Mobile IPv6 extensions */
-		int AdvIntervalOpt;
-		int AdvHomeAgentInfo;
-
-		uint16_t HomeAgentPreference;
-		int32_t HomeAgentLifetime; /* XXX: really uint16_t but we need to use -1 */
-
-		/* NEMO extensions */
-		int AdvMobRtrSupportFlag;
-	} mipv6;
+	struct AdvMipv6 mipv6;
 
 	struct AdvLowpanCo *AdvLowpanCoList;
 	struct AdvAbro *AdvAbroList;
+
+	/* data structure for PvD ID option */
+	/* suppose that there is only PvD ID option per interface */
+
+	struct AdvPvd *pvd_id_option;
 
 	struct AdvRASrcAddress *AdvRASrcAddressList;
 
@@ -265,6 +317,17 @@ struct nd_opt_6co {
 	uint16_t nd_opt_6co_valid_lifetime;
 	struct in6_addr nd_opt_6co_con_prefix;
 }; /*Added by Bhadram */
+
+/* PvD ID extension */
+#define ND_OPT_PVDID 254	/* Reserved : waiting for IANA attribution */
+
+struct nd_opt_pvdid {
+	uint8_t nd_opt_pvdid_type;
+	uint8_t nd_opt_pvdid_len;
+	uint16_t nd_opt_pvdid_flags;
+	uint16_t nd_opt_pvdid_sequence;
+	//unsigned char nd_opt_pvdid_name[];
+};
 
 /* gram.y */
 struct Interface *readin_config(char const *fname);
