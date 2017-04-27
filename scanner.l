@@ -67,6 +67,11 @@ AdvDefaultLifetime	{ return T_AdvDefaultLifetime; }
 AdvDefaultPreference	{ return T_AdvDefaultPreference; }
 AdvSourceLLAddress	{ return T_AdvSourceLLAddress; }
 
+AdvPvdId		{ return T_AdvPvdId; }
+AdvPvdIdSequenceNumber	{ return T_AdvPvdIdSequenceNumber; }
+AdvPvdIdHttpExtraInfo	{ return T_AdvPvdIdHttpExtraInfo; }
+AdvPvdIdLegacy		{ return T_AdvPvdIdLegacy; }
+
 AdvOnLink		{ return T_AdvOnLink; }
 AdvAutonomous		{ return T_AdvAutonomous; }
 AdvValidLifetime	{ return T_AdvValidLifetime; }

@@ -22,6 +22,8 @@
 #include "netlink.h"
 #endif
 
+#include "trigger.h"
+
 #include <libgen.h>
 #include <poll.h>
 #include <sys/file.h>
@@ -43,6 +45,7 @@ static char usage_str[] = {
 "  -p, --pidfile=PATH      Set the pid file.\n"
 "  -t, --chrootdir=PATH    Chroot to the specified path.\n"
 "  -u, --username=USER     Switch to the specified user.\n"
+"  -T, --trigger_path=PATH Path to a pipe for use with a (PVDID) monitoring daemon.\n"
 "  -v, --version           Print the version and quit.\n"
 };
 
@@ -58,6 +61,7 @@ static struct option prog_opt[] = {
 	{"nodaemon", 0, 0, 'n'},
 	{"pidfile", 1, 0, 'p'},
 	{"username", 1, 0, 'u'},
+	{"trigger_path", 1, 0, 'p'},
 	{"version", 0, 0, 'v'},
 	{NULL, 0, 0, 0}
 };
@@ -66,7 +70,7 @@ static struct option prog_opt[] = {
 
 static char usage_str[] = {
 "[-hsvcn] [-d level] [-C config_path] [-m log_method] [-l log_file]\n"
-"\t[-f facility] [-p pid_file] [-u username] [-t chrootdir]"
+"\t[-f facility] [-p pid_file] [-u username] [-t chrootdir] [-T trigger_pipe_path]"
 
 };
 /* clang-format on */
@@ -84,7 +88,7 @@ static int open_and_lock_pid_file(char const *daemon_pid_file_ident);
 static int write_pid_file(char const *daemon_pid_file_ident, pid_t pid);
 static pid_t daemonp(int nochdir, int noclose, char const *daemon_pid_file_ident);
 static pid_t do_daemonize(int log_method, char const *daemon_pid_file_ident);
-static struct Interface *main_loop(int sock, struct Interface *ifaces, char const *conf_path);
+static struct Interface *main_loop(int sock, struct Interface *ifaces, char const *conf_path, char *trigger_pipe_path);
 static struct Interface *reload_config(int sock, struct Interface *ifaces, char const *conf_path);
 static void check_pid_file(char const *daemon_pid_file_ident);
 static void config_interface(struct Interface *iface);
@@ -190,6 +194,7 @@ int main(int argc, char *argv[])
 	int facility = LOG_FACILITY;
 	char *username = NULL;
 	char *chrootdir = NULL;
+	char *trigger_pipe_path = NULL;
 	int configtest = 0;
 	int daemonize = 1;
 
@@ -201,7 +206,7 @@ int main(int argc, char *argv[])
 	char const *daemon_pid_file_ident = PATH_RADVD_PID;
 
 /* parse args */
-#define OPTIONS_STR "d:C:l:m:p:t:u:vhcn"
+#define OPTIONS_STR "d:C:l:m:p:t:u:T:vhcn"
 #ifdef HAVE_GETOPT_LONG
 	int opt_idx;
 	while ((c = getopt_long(argc, argv, OPTIONS_STR, prog_opt, &opt_idx)) > 0)
@@ -248,6 +253,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'u':
 			username = strdup(optarg);
+			break;
+		case 'T':
+			trigger_pipe_path = strdup(optarg);
 			break;
 		case 'v':
 			version();
@@ -435,7 +443,7 @@ int main(int argc, char *argv[])
 	}
 
 	setup_ifaces(sock, ifaces);
-	ifaces = main_loop(sock, ifaces, conf_path);
+	ifaces = main_loop(sock, ifaces, conf_path, trigger_pipe_path);
 	stop_adverts(sock, ifaces);
 
 	flog(LOG_INFO, "removing %s", daemon_pid_file_ident);
@@ -457,9 +465,13 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
-static struct Interface *main_loop(int sock, struct Interface *ifaces, char const *conf_path)
+static struct Interface *main_loop(
+		int sock,
+		struct Interface *ifaces,
+		char const *conf_path,
+		char *trigger_pipe_path)
 {
-	struct pollfd fds[2];
+	struct pollfd fds[3];
 	sigset_t sigmask;
 	sigset_t sigempty;
 	struct sigaction sa;
@@ -505,6 +517,14 @@ static struct Interface *main_loop(int sock, struct Interface *ifaces, char cons
 	fds[1].fd = -1;
 #endif
 
+	if (trigger_pipe_path != NULL) {
+		fds[2].fd = trigger_pipe(trigger_pipe_path);
+		fds[2].events = POLLIN;
+	}
+	else {
+		fds[2].fd = -1;
+	}
+
 	for (;;) {
 		struct timespec *tsp = 0;
 
@@ -534,6 +554,12 @@ static struct Interface *main_loop(int sock, struct Interface *ifaces, char cons
 				process_netlink_msg(fds[1].fd, ifaces);
 			}
 #endif
+
+			if (fds[2].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+				flog(LOG_WARNING, "pipe error on fds[2].fd");
+			} else if (fds[2].revents & POLLIN) {
+				process_trigger_msg(fds[2].fd);
+			}
 
 			if (fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
 				flog(LOG_WARNING, "socket error on fds[0].fd");

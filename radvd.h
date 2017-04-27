@@ -19,6 +19,7 @@
 #include "defaults.h"
 #include "includes.h"
 #include "log.h"
+#include "pvd.h"
 
 #define CONTACT_EMAIL "Reuben Hawkins <reubenhwk@gmail.com>"
 
@@ -33,6 +34,7 @@ struct Clients;
 
 #define HWADDR_MAX 16
 #define USER_HZ 100
+
 
 struct safe_buffer {
 	int should_free;
@@ -124,6 +126,12 @@ struct Interface {
 
 	struct AdvLowpanCo *AdvLowpanCoList;
 	struct AdvAbro *AdvAbroList;
+
+	/* PvD ID */
+	char AdvPvdId[PVDIDNAMSIZ];
+	int AdvPvdIdSeq;
+	int AdvPvdIdHttpExtraInfo;
+	int AdvPvdIdLegacy;
 
 	struct AdvRASrcAddress *AdvRASrcAddressList;
 
@@ -265,6 +273,19 @@ struct nd_opt_6co {
 	uint16_t nd_opt_6co_valid_lifetime;
 	struct in6_addr nd_opt_6co_con_prefix;
 }; /*Added by Bhadram */
+
+/* PvD ID extension */
+#define ND_OPT_PVDID 253	/* Reserved : waiting for IANA attribution */
+
+struct nd_opt_pvdid {
+	uint8_t nd_opt_pvdid_type;
+	uint8_t nd_opt_pvdid_len;
+	uint8_t nd_opt_pvdid_seq : 4;
+	uint8_t nd_opt_pvdid_h : 1;
+	uint8_t nd_opt_pvdid_l : 1;
+	uint16_t nd_opt_pvdid_reserved : 10;
+	unsigned char nd_opt_pvdid_name[];
+};
 
 /* gram.y */
 struct Interface *readin_config(char const *fname);

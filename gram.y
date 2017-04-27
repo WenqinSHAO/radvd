@@ -77,6 +77,11 @@
 %token		T_AdvDefaultPreference
 %token		T_AdvSourceLLAddress
 
+%token		T_AdvPvdId
+%token		T_AdvPvdIdSequenceNumber
+%token		T_AdvPvdIdHttpExtraInfo
+%token		T_AdvPvdIdLegacy
+
 %token		T_AdvOnLink
 %token		T_AdvAutonomous
 %token		T_AdvValidLifetime
@@ -336,7 +341,36 @@ ifaceval	: T_MinRtrAdvInterval NUMBER ';'
 		{
 			iface->mipv6.AdvMobRtrSupportFlag = $2;
 		}
+		| T_AdvPvdId STRING '{' pvdidoptions '}' ';'
+		{
+			if (iface->AdvPvdId[0] != '\0') {
+				flog(LOG_WARNING,
+					"duplicate PvD ID definition for interface %s",
+					iface->props.name);
+			}
+			strncpy(iface->AdvPvdId, $2, PVDIDNAMSIZ - 1);
+			iface->AdvPvdId[PVDIDNAMSIZ - 1] = '\0';
+		}
 		;
+
+pvdidoptions	:	/* empty */
+		| pvdidoptions pvdidoption
+		;
+
+pvdidoption	: T_AdvPvdIdHttpExtraInfo SWITCH ';'
+		{
+			iface->AdvPvdIdHttpExtraInfo = $2;
+		}
+		| T_AdvPvdIdLegacy SWITCH ';'
+		{
+			iface->AdvPvdIdLegacy = $2;
+		}
+		| T_AdvPvdIdSequenceNumber NUMBER ';'
+		{
+			iface->AdvPvdIdSeq = $2 & 0x15;
+		}
+		;
+
 
 clientslist	: T_CLIENTS '{' v6addrlist_clients '}' ';'
 		{

@@ -47,6 +47,11 @@ void iface_init_defaults(struct Interface *iface)
 
 	iface->AdvLinkMTU = DFLT_AdvLinkMTU;
 	iface->AdvRAMTU = DFLT_AdvRAMTU;
+
+	iface->AdvPvdId[0] = '\0';
+	iface->AdvPvdIdSeq = 0;
+	iface->AdvPvdIdHttpExtraInfo = 0;
+	iface->AdvPvdIdLegacy = 0;
 }
 
 void touch_iface(struct Interface *iface)

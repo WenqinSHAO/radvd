@@ -96,7 +96,10 @@ radvd_SOURCES = \
 	process.c \
 	radvd.c \
 	send.c \
-	timer.c
+	timer.c \
+	trigger.c \
+	trigger.h \
+	pvd.h
 
 radvdump_SOURCES = \
 	defaults.h \
@@ -262,6 +265,9 @@ check_all_SOURCES = \
 	log.c \
 	send.c \
 	timer.c \
+	trigger.c \
+	trigger.h \
+	pvd.h \
 	util.c
 
 check_all_CFLAGS = \
