@@ -132,6 +132,7 @@ struct Interface {
 	int AdvPvdIdSeq;
 	int AdvPvdIdHttpExtraInfo;
 	int AdvPvdIdLegacy;
+	uint32_t AdvPvdIdLifetime;
 
 	struct AdvRASrcAddress *AdvRASrcAddressList;
 
@@ -284,6 +285,7 @@ struct nd_opt_pvdid {
 	uint8_t nd_opt_pvdid_h : 1;
 	uint8_t nd_opt_pvdid_l : 1;
 	uint16_t nd_opt_pvdid_reserved : 10;
+	uint32_t nd_opt_pvdid_lifetime;
 	unsigned char nd_opt_pvdid_name[];
 };
 

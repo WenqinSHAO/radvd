@@ -81,6 +81,7 @@
 %token		T_AdvPvdIdSequenceNumber
 %token		T_AdvPvdIdHttpExtraInfo
 %token		T_AdvPvdIdLegacy
+%token		T_AdvPvdIdLifetime
 
 %token		T_AdvOnLink
 %token		T_AdvAutonomous
@@ -368,6 +369,10 @@ pvdidoption	: T_AdvPvdIdHttpExtraInfo SWITCH ';'
 		| T_AdvPvdIdSequenceNumber NUMBER ';'
 		{
 			iface->AdvPvdIdSeq = $2 & 0x15;
+		}
+		| T_AdvPvdIdLifetime number_or_infinity ';'
+		{
+			iface->AdvPvdIdLifetime = $2;
 		}
 		;
 
