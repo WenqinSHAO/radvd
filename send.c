@@ -657,12 +657,12 @@ static void add_ra_option_pvdid(struct safe_buffer *sb, const char *id, int seq,
 	memset(&pvdid, 0, sizeof(pvdid));
 
 	pvdid.nd_opt_pvdid_type = ND_OPT_PVDID;
-	pvdid.nd_opt_pvdid_len = 2;
-	pvdid.nd_opt_pvdid_seq = seq;
+	pvdid.nd_opt_pvdid_len = 2;	// non relevant here
+	pvdid.nd_opt_pvdid_seq = htons(seq);
 	pvdid.nd_opt_pvdid_h = h;
 	pvdid.nd_opt_pvdid_l = l;
 	pvdid.nd_opt_pvdid_reserved = 0;
-	pvdid.nd_opt_pvdid_lifetime = lifetime;
+	pvdid.nd_opt_pvdid_lifetime = htonl(lifetime);
 
 	len = 0;
 	while (*id != '\0') {
