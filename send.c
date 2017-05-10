@@ -658,7 +658,7 @@ static void add_ra_option_pvdid(struct safe_buffer *sb, const char *id, int seq,
 
 	pvdid.nd_opt_pvdid_type = ND_OPT_PVDID;
 	pvdid.nd_opt_pvdid_len = 2;	// non relevant here
-	pvdid.nd_opt_pvdid_seq = htons(seq);
+	pvdid.nd_opt_pvdid_seq = seq;
 	pvdid.nd_opt_pvdid_h = h;
 	pvdid.nd_opt_pvdid_l = l;
 	pvdid.nd_opt_pvdid_reserved = 0;
@@ -687,12 +687,14 @@ static void add_ra_option_pvdid(struct safe_buffer *sb, const char *id, int seq,
 	bytes = sizeof(pvdid) + len;
 	pvdid.nd_opt_pvdid_len = (bytes + 7) / 8;
 	padding = pvdid.nd_opt_pvdid_len * 8 - bytes;
-	safe_buffer_resize(sb, sb->used + sizeof(pvdid) + l + padding);
+	safe_buffer_resize(sb, sb->used + sizeof(pvdid) + len + padding);
 	safe_buffer_append(sb, &pvdid, sizeof(pvdid));
 	safe_buffer_append(sb, fqdn->buffer, fqdn->used);
 	safe_buffer_pad(sb, padding);
 
 	safe_buffer_free(fqdn);
+
+	dlog(LOG_ERR, 4, "pvdid : option len = %d, buffer size = %lu\n", pvdid.nd_opt_pvdid_len, sb->used);
 
 	return;
 }
@@ -701,6 +703,18 @@ static struct safe_buffer_list *build_ra_options(struct Interface const *iface, 
 {
 	struct safe_buffer_list *sbl = new_safe_buffer_list();
 	struct safe_buffer_list *cur = sbl;
+
+	if (iface->AdvPvdId[0] != '\0') {
+		cur->next = new_safe_buffer_list();
+		cur = cur->next;
+		add_ra_option_pvdid(
+			cur->sb,
+			iface->AdvPvdId,
+			iface->AdvPvdIdSeq,
+			iface->AdvPvdIdHttpExtraInfo,
+			iface->AdvPvdIdLegacy,
+			iface->AdvPvdIdLifetime);
+	}
 
 	if (iface->AdvPrefixList) {
 		cur =
@@ -755,18 +769,6 @@ static struct safe_buffer_list *build_ra_options(struct Interface const *iface, 
 		cur->next = new_safe_buffer_list();
 		cur = cur->next;
 		add_ra_option_abro(cur->sb, iface->AdvAbroList);
-	}
-
-	if (iface->AdvPvdId[0] != '\0') {
-		cur->next = new_safe_buffer_list();
-		cur = cur->next;
-		add_ra_option_pvdid(
-			cur->sb,
-			iface->AdvPvdId,
-			iface->AdvPvdIdSeq,
-			iface->AdvPvdIdHttpExtraInfo,
-			iface->AdvPvdIdLegacy,
-			iface->AdvPvdIdLifetime);
 	}
 
 	// Return the root of the list
