@@ -453,10 +453,10 @@ static void print_ff(unsigned char *msg, int len, struct sockaddr_in6 *addr, int
 
 			printf("\n\tPVD %s Sequence %d, H flag %d, L flag %d, lifetime %u\n",
 				&pvdid->nd_opt_pvdid_name[1], 
-				pvdid->nd_opt_pvdid_seq,
+				ntohs(pvdid->nd_opt_pvdid_seq),
 				pvdid->nd_opt_pvdid_h,
 				pvdid->nd_opt_pvdid_l,
-				pvdid->nd_opt_pvdid_lifetime);
+				ntohl(pvdid->nd_opt_pvdid_lifetime));
 			break;
 		}
 		default:
