@@ -898,7 +898,9 @@ static int really_send(int sock, struct in6_addr const *dest, struct properties 
 {
 	struct sockaddr_in6 addr;
 	memset((void *)&addr, 0, sizeof(addr));
+#ifdef	SIN6_LEN
 	addr.sin6_len = sizeof(struct sockaddr_in6) ; // Let's be clean
+#endif
 	addr.sin6_family = AF_INET6;
 	addr.sin6_port = htons(IPPROTO_ICMPV6);
 	memcpy(&addr.sin6_addr, dest, sizeof(struct in6_addr));
