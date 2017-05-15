@@ -794,6 +794,12 @@ static int send_ra(int sock, struct Interface *iface, struct in6_addr const *des
 	char src_text[INET6_ADDRSTRLEN] = {""};
 	addrtostr(dest, dest_text, INET6_ADDRSTRLEN);
 	addrtostr(iface->props.if_addr_rasrc, src_text, INET6_ADDRSTRLEN);
+#ifdef __MACH__
+	/* Probably not the most suitable place to change the source Link Local address...
+		but see https://www.freebsd.org/doc/en/books/developers-handbook/ipv6.html#ipv6-scope-index */
+	iface->props.if_addr_rasrc->s6_addr[3] = iface->props.if_index % 256 ;
+	iface->props.if_addr_rasrc->s6_addr[2] = iface->props.if_index >> 8 ;
+#endif
 
 	// Build RA header
 	struct safe_buffer *ra_hdr = new_safe_buffer();
@@ -892,6 +898,7 @@ static int really_send(int sock, struct in6_addr const *dest, struct properties 
 {
 	struct sockaddr_in6 addr;
 	memset((void *)&addr, 0, sizeof(addr));
+	addr.sin6_len = sizeof(struct sockaddr_in6) ; // Let's be clean
 	addr.sin6_family = AF_INET6;
 	addr.sin6_port = htons(IPPROTO_ICMPV6);
 	memcpy(&addr.sin6_addr, dest, sizeof(struct in6_addr));
@@ -913,8 +920,18 @@ static int really_send(int sock, struct in6_addr const *dest, struct properties 
 	memcpy(&pkt_info->ipi6_addr, props->if_addr_rasrc, sizeof(struct in6_addr));
 
 #ifdef HAVE_SIN6_SCOPE_ID
-	if (IN6_IS_ADDR_LINKLOCAL(&addr.sin6_addr) || IN6_IS_ADDR_MC_LINKLOCAL(&addr.sin6_addr))
+	if (IN6_IS_ADDR_LINKLOCAL(&addr.sin6_addr) || IN6_IS_ADDR_MC_LINKLOCAL(&addr.sin6_addr)) {
+		dlog(LOG_DEBUG, 5, "sending to a link scoped address for interface #%d", props->if_index) ;
 		addr.sin6_scope_id = props->if_index;
+#ifdef __MACH__
+		/* According to https://www.freebsd.org/doc/en/books/developers-handbook/ipv6.html#ipv6-scope-index, BSD (including Mac OS/X needs to embed the interface index in the address !!! */
+		addr.sin6_addr.s6_addr[3] = props->if_index % 256 ; 
+		addr.sin6_addr.s6_addr[2] = props->if_index >> 8 ; 
+		char dest_text[INET6_ADDRSTRLEN] = {""};
+		addrtostr(&addr.sin6_addr, dest_text, INET6_ADDRSTRLEN);
+		dlog(LOG_DEBUG, 5, "modified link-local destination address for BSD -> %s", dest_text) ;
+#endif
+	}
 #endif
 
 	struct msghdr mhdr;
