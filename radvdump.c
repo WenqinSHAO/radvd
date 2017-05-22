@@ -460,7 +460,7 @@ static void print_ff(unsigned char *msg, int len, struct sockaddr_in6 *addr, int
 					"%u",
 					ntohl(pvdid->nd_opt_pvdid_lifetime));
 			}
-			printf("\n\tAdvPvdId %s {\n", &pvdid->nd_opt_pvdid_name[1]);
+			printf("\n\tpvd %s {\n", &pvdid->nd_opt_pvdid_name[1]);
 			printf("\t\tAdvPvdIdSequenceNumber %d;\n", pvdid->nd_opt_pvdid_seq);
 			printf("\t\tAdvPvdIdHttpExtraInfo %s;\n", pvdid->nd_opt_pvdid_h ? "on" : "off");
 			printf("\t\tAdvPvdIdLegacy %s;\n", pvdid->nd_opt_pvdid_l ? "on" : "off");

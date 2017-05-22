@@ -45,6 +45,7 @@
 
 %token		T_INTERFACE
 %token		T_PREFIX
+%token		T_PVD
 %token		T_ROUTE
 %token		T_RDNSS
 %token		T_DNSSL
@@ -77,7 +78,6 @@
 %token		T_AdvDefaultPreference
 %token		T_AdvSourceLLAddress
 
-%token		T_AdvPvdId
 %token		T_AdvPvdIdSequenceNumber
 %token		T_AdvPvdIdHttpExtraInfo
 %token		T_AdvPvdIdLegacy
@@ -342,7 +342,7 @@ ifaceval	: T_MinRtrAdvInterval NUMBER ';'
 		{
 			iface->mipv6.AdvMobRtrSupportFlag = $2;
 		}
-		| T_AdvPvdId STRING '{' pvdidoptions '}' ';'
+		| T_PVD STRING '{' pvdidoptions '}' ';'
 		{
 			if (iface->AdvPvdId[0] != '\0') {
 				flog(LOG_WARNING,
