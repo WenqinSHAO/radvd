@@ -442,6 +442,8 @@ static void print_ff(unsigned char *msg, int len, struct sockaddr_in6 *addr, int
 			unsigned char *pt = pvdid->nd_opt_pvdid_name;
 			int labelLen = *pt++;
 			char spvdid_lifetime[128];
+			uint32_t lifetime;
+			int seq, h, l;
 
 			while (labelLen != 0) {
 				int n;
@@ -452,18 +454,23 @@ static void print_ff(unsigned char *msg, int len, struct sockaddr_in6 *addr, int
 				labelLen = n;
 			}
 
-			if (ntohl(pvdid->nd_opt_pvdid_lifetime) == 0xffffffff) {
+			memcpy(&lifetime, &pvdid->nd_opt_pvdid_payload[2], 4);
+			seq = (pvdid->nd_opt_pvdid_payload[0] >> 4) & 0x0F;
+			h = (pvdid->nd_opt_pvdid_payload[0] >> 3) & 0x01;
+			l = (pvdid->nd_opt_pvdid_payload[0] >> 2) & 0x01;
+
+			if (ntohl(lifetime) == 0xffffffff) {
 				strcpy(spvdid_lifetime, "infinity");
 			}
 			else {
 				sprintf(spvdid_lifetime,
 					"%u",
-					ntohl(pvdid->nd_opt_pvdid_lifetime));
+					ntohl(lifetime));
 			}
 			printf("\n\tpvd %s {\n", &pvdid->nd_opt_pvdid_name[1]);
-			printf("\t\tAdvPvdIdSequenceNumber %d;\n", pvdid->nd_opt_pvdid_seq);
-			printf("\t\tAdvPvdIdHttpExtraInfo %s;\n", pvdid->nd_opt_pvdid_h ? "on" : "off");
-			printf("\t\tAdvPvdIdLegacy %s;\n", pvdid->nd_opt_pvdid_l ? "on" : "off");
+			printf("\t\tAdvPvdIdSequenceNumber %d;\n", seq);
+			printf("\t\tAdvPvdIdHttpExtraInfo %s;\n", h ? "on" : "off");
+			printf("\t\tAdvPvdIdLegacy %s;\n", l ? "on" : "off");
 			printf("\t\tAdvPvdIdLifetime %s;\n", spvdid_lifetime);
 			printf("\t]; # End of PVD definition\n\n");
 
