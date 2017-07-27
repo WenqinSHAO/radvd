@@ -281,7 +281,8 @@ struct nd_opt_6co {
 struct nd_opt_pvdid {
 	uint8_t nd_opt_pvdid_type;
 	uint8_t nd_opt_pvdid_len;
-	unsigned char nd_opt_pvdid_payload[6];
+	uint16_t nd_opt_pvdid_flags;
+	uint16_t nd_opt_pvdid_sequence;
 	unsigned char nd_opt_pvdid_name[];
 };
 

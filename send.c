@@ -38,7 +38,7 @@ static void add_ra_option_mipv6_home_agent_info(struct safe_buffer *sb, struct m
 static void add_ra_option_lowpanco(struct safe_buffer *sb, struct AdvLowpanCo const *lowpanco);
 static void add_ra_option_abro(struct safe_buffer *sb, struct AdvAbro const *abroo);
 
-static void add_ra_option_pvdid(struct safe_buffer *sb, const char *pvdid, int seq, int h, int l, uint32_t lifetime);
+static void add_ra_option_pvdid(struct safe_buffer *sb, const char *pvdid, int seq, int h, int l);
 
 // Options that generate 0 or more blocks
 static struct safe_buffer_list *add_ra_options_prefix(struct safe_buffer_list *sbl, struct Interface const *iface,
@@ -645,10 +645,9 @@ static void add_ra_option_abro(struct safe_buffer *sb, struct AdvAbro const *abr
 	safe_buffer_append(sb, &abro, sizeof(abro));
 }
 
-static void add_ra_option_pvdid(struct safe_buffer *sb, const char *id, int seq, int h, int l, uint32_t lifetime)
+static void add_ra_option_pvdid(struct safe_buffer *sb, const char *id, int seq, int h, int l)
 {
 	int len = 0;
-	char zero = 0;
 	int bytes;
 	int padding;
 	struct nd_opt_pvdid pvdid;
@@ -657,33 +656,12 @@ static void add_ra_option_pvdid(struct safe_buffer *sb, const char *id, int seq,
 	memset(&pvdid, 0, sizeof(pvdid));
 
 	pvdid.nd_opt_pvdid_type = ND_OPT_PVDID;
-	pvdid.nd_opt_pvdid_len = 2;	// non relevant here
-	pvdid.nd_opt_pvdid_payload[0] =
-			(seq << 4) | ((h & 0x01) << 3) | ((l & 0x01) << 2);
-	pvdid.nd_opt_pvdid_payload[1] = 0;
+	pvdid.nd_opt_pvdid_len = 0;	/* will be updated below */
+	pvdid.nd_opt_pvdid_sequence = htons(seq);
+	pvdid.nd_opt_pvdid_flags = htons((h << 15) | (l << 14));
 
-	lifetime = htonl(lifetime);
-	memcpy(&pvdid.nd_opt_pvdid_payload[2], &lifetime, 4);
-
-	len = 0;
-	while (*id != '\0') {
-		unsigned char labelLen;
-		char *pt = strchr(id, '.');
-
-		labelLen = (pt == NULL) ? strlen(id) : (unsigned char) (pt - id);
-
-		safe_buffer_resize(fqdn, fqdn->used + sizeof(labelLen) + labelLen + 8);
-		len += safe_buffer_append(fqdn, &labelLen, sizeof(labelLen));
-		len += safe_buffer_append(fqdn, id, labelLen);
-
-		if (pt != NULL) {
-			id = pt + 1;
-		}
-		else {
-			break;
-		}
-	}
-	len += safe_buffer_append(fqdn, &zero, sizeof(zero));
+	safe_buffer_resize(fqdn, fqdn->used + strlen(id) + 1);
+	len += safe_buffer_append(fqdn, id, strlen(id) + 1);
 
 	bytes = sizeof(pvdid) + len;
 	pvdid.nd_opt_pvdid_len = (bytes + 7) / 8;
@@ -713,8 +691,7 @@ static struct safe_buffer_list *build_ra_options(struct Interface const *iface, 
 			iface->AdvPvdId,
 			iface->AdvPvdIdSeq,
 			iface->AdvPvdIdHttpExtraInfo,
-			iface->AdvPvdIdLegacy,
-			iface->AdvPvdIdLifetime);
+			iface->AdvPvdIdLegacy);
 	}
 
 	if (iface->AdvPrefixList) {

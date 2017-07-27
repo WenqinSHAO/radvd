@@ -71,7 +71,6 @@ AdvSourceLLAddress	{ return T_AdvSourceLLAddress; }
 AdvPvdIdSequenceNumber	{ return T_AdvPvdIdSequenceNumber; }
 AdvPvdIdHttpExtraInfo	{ return T_AdvPvdIdHttpExtraInfo; }
 AdvPvdIdLegacy		{ return T_AdvPvdIdLegacy; }
-AdvPvdIdLifetime	{ return T_AdvPvdIdLifetime; }
 
 AdvOnLink		{ return T_AdvOnLink; }
 AdvAutonomous		{ return T_AdvAutonomous; }

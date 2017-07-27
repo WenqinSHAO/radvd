@@ -370,10 +370,6 @@ pvdidoption	: T_AdvPvdIdHttpExtraInfo SWITCH ';'
 		{
 			iface->AdvPvdIdSeq = $2 & 0x0F;	// 4 bits
 		}
-		| T_AdvPvdIdLifetime number_or_infinity ';'
-		{
-			iface->AdvPvdIdLifetime = $2;
-		}
 		;
 
 
