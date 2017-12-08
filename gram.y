@@ -82,6 +82,7 @@
 %token		T_AdvPvdIdHttpExtraInfo
 %token		T_AdvPvdIdLegacy
 %token		T_AdvPvdIdLifetime
+%token 		T_AdvPvdAdvHeader
 
 %token		T_AdvOnLink
 %token		T_AdvAutonomous

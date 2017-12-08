@@ -35,7 +35,7 @@ addr2		{hexdigit}{1,4}(":"{hexdigit}{1,4})*"::"
 addr3		({hexdigit}{1,4}":"){7}{hexdigit}{1,4}
 addr		({addr1}|{addr2}|{addr3}|"::")
 whitespace	([ \t])+
-string		[a-zA-Z0-9`~!@#$%\^&*()_\-+=:\[\]<>,\.?\\]+
+string		[a-zA-Z0-9`~!@#$%\^&*()_\-+=:\[\]<>,\.?\\\/]+
 %%
 
 #.*$			{/* ignore comments */}
@@ -71,6 +71,7 @@ AdvSourceLLAddress	{ return T_AdvSourceLLAddress; }
 AdvPvdIdSequenceNumber	{ return T_AdvPvdIdSequenceNumber; }
 AdvPvdIdHttpExtraInfo	{ return T_AdvPvdIdHttpExtraInfo; }
 AdvPvdIdLegacy		{ return T_AdvPvdIdLegacy; }
+AdvPvdAdvHeader		{ return T_AdvPvdAdvHeader; }
 
 AdvOnLink		{ return T_AdvOnLink; }
 AdvAutonomous		{ return T_AdvAutonomous; }
