@@ -127,12 +127,32 @@ struct Interface {
 	struct AdvLowpanCo *AdvLowpanCoList;
 	struct AdvAbro *AdvAbroList;
 
-	/* PvD ID */
-	char AdvPvdId[PVDIDNAMSIZ];
-	int AdvPvdIdSeq;
-	int AdvPvdIdHttpExtraInfo;
-	int AdvPvdIdLegacy;
-	uint32_t AdvPvdIdLifetime;
+	/* data structure for PvD ID option */
+	struct pvd_id_option {
+		/* things that identify a PvD ID option, along with LLA sending out the RA*/
+		char AdvPvdId[PVDIDNAMSIZ];
+		int AdvPvdIdSeq;
+
+		/* PvD ID flags */
+		int AdvPvdIdHttpExtraInfo;
+		int AdvPvdIdLegacy;
+		int AdvPvdAdvHeader;
+
+		/* intialized when AdvPvdHeader is set */
+		struct ra_header_info; 
+		
+		/* PvD ID option can containe all the other classic RA options */
+		struct AdvPrefix *AdvPrefixList;
+		struct AdvRoute *AdvRouteList;
+		struct AdvRDNSS *AdvRDNSSList;
+		struct AdvDNSSL *AdvDNSSLList;
+		uint32_t AdvLinkMTU;
+		uint32_t AdvRAMTU;
+		struct sllao sllao;
+		struct mipv6 mipv6;
+		struct AdvLowpanCo *AdvLowpanCoList;
+		struct AdvAbro *AdvAbroList
+	} pvd_id_option;
 
 	struct AdvRASrcAddress *AdvRASrcAddressList;
 
