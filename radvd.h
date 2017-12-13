@@ -326,7 +326,7 @@ struct nd_opt_pvdid {
 	uint8_t nd_opt_pvdid_len;
 	uint16_t nd_opt_pvdid_flags;
 	uint16_t nd_opt_pvdid_sequence;
-	unsigned char nd_opt_pvdid_name[];
+	//unsigned char nd_opt_pvdid_name[];
 };
 
 /* gram.y */
