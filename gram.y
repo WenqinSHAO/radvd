@@ -385,6 +385,7 @@ pvdhead		: T_PVD STRING
 					ABORT;
 				}
 
+				pvd_init_defaults(pvd);
 				strncpy(pvd->AdvPvdId, $2, PVDIDNAMSIZ-1);
 				pvd->AdvPvdId[PVDIDNAMSIZ-1] = '\0';
 			}
