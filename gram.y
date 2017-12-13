@@ -373,9 +373,9 @@ pvdidoption : pvdhead '{' pvdparams '}'
 pvdhead		: T_PVD STRING 
 			{
 				if (iface->pvd_id_option) {
-					flog{LOG_WARNING, 
-						 "multiple PvD ID option found in interface %s, 
-						 only the last one is considered." iface->props.name};
+					flog(LOG_WARNING, 
+						 "multiple PvD ID option found in interface %s,\
+						 only the last one is considered." iface->props.name);
 				}
 
 				pvd = malloc(sizeof(struct AdvPvd));
