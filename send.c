@@ -29,15 +29,15 @@ static void update_iface_times(struct Interface *iface);
 static size_t serialize_domain_names(struct safe_buffer *safe_buffer, struct AdvDNSSL const *dnssl);
 
 // Options that only need a single block
-static void add_ra_header(struct safe_buffer *sb, struct ra_header_info const *ra_header_info, int cease_adv);
+static void add_ra_header(struct safe_buffer *sb, struct AdvRaHeaderInfo const *ra_header_info, int cease_adv);
 static void add_ra_option_prefix(struct safe_buffer *sb, struct AdvPrefix const *prefix, int cease_adv);
 static void add_ra_option_mtu(struct safe_buffer *sb, uint32_t AdvLinkMTU);
-static void add_ra_option_sllao(struct safe_buffer *sb, struct sllao const *sllao);
+static void add_ra_option_sllao(struct safe_buffer *sb, struct AdvSllao const *sllao);
 static void add_ra_option_mipv6_rtr_adv_interval(struct safe_buffer *sb, double MaxRtrAdvInterval);
-static void add_ra_option_mipv6_home_agent_info(struct safe_buffer *sb, struct mipv6 const *mipv6);
+static void add_ra_option_mipv6_home_agent_info(struct safe_buffer *sb, struct AdvMipv6 const *mipv6);
 static void add_ra_option_lowpanco(struct safe_buffer *sb, struct AdvLowpanCo const *lowpanco);
 static void add_ra_option_abro(struct safe_buffer *sb, struct AdvAbro const *abroo);
-
+// TODO: to be modified
 static void add_ra_option_pvdid(struct safe_buffer *sb, const char *pvdid, int seq, int h, int l);
 
 // Options that generate 0 or more blocks
@@ -184,7 +184,7 @@ static void update_iface_times(struct Interface *iface)
 *       add_ra_*                                                                *
 ********************************************************************************/
 
-static void add_ra_header(struct safe_buffer *sb, struct ra_header_info const *ra_header_info, int cease_adv)
+static void add_ra_header(struct safe_buffer *sb, struct AdvRaHeaderInfo const *ra_header_info, int cease_adv)
 {
 	struct nd_router_advert radvert;
 
@@ -678,6 +678,100 @@ static void add_ra_option_pvdid(struct safe_buffer *sb, const char *id, int seq,
 	return;
 }
 
+static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl, 
+													struct Interface const *iface,
+													struct cost *ifname, 
+													struct AdvPvd *p, 
+													struct in6_addr *dest) {
+	
+	int len = 6; // type +length + flag +seq = 6 bytes minum as size
+	int bytes;
+	int padding;
+	struct nd_opt_pvdid pvdid;
+	struct safe_buffer *fqdn = new_safe_buffer();
+	struct safe_buffer *pvdraheader = new_safe_buffer();
+	struct safe_buffer_list *pvdoptions = new_safe_buffer_list();
+	struct safe_buffer_list *cur = pvdoptions;
+
+	memset(&pvdid, 0, sizeof(pvdid));
+
+	pvdid.nd_opt_pvdid_type = ND_OPT_PVDID;
+	pvdid.nd_opt_pvdid_len = 0;	/* will be updated below */
+	pvdid.nd_opt_pvdid_sequence = htons(p->AdvPvdIdSeq);
+	pvdid.nd_opt_pvdid_flags = htons((p->AdvPvdIdHttpExtraInfo << 15) |
+									 (p->AdvPvdIdLegacy << 14) |
+									 (p-> AdvPvdAdvHeader << 13));
+
+	// ugly repeat code in serialize_domain_names to format PvD ID wich is a FQDN
+	char *label = p->AdvPvdId;
+	while(label[0] != '\0') {
+		unsigned char label_len;
+
+		if (strchr(label, '.') == NULL)
+			label_len = (unsigned char)strlen(label);
+		else
+			label_len = (unsigned char)(strchr(label, '.') - label)
+
+		safe_buffer_resize(fqdn, safe_buffer->used + sizeof(label_len) + label_len + 8);
+		len += safe_buffer_append(fqdn, &label_len, sizeof(label_len));
+		len += safe_buffer_append(fqdn, label, label_len);
+
+		label += label_len;
+
+		if (label[0] == '.') {
+			label ++;
+		}
+
+		if (label[0] == '\0') {
+			char zero = 0;
+			len+= safe_buffer_append(fqdn, &zero, sizeof(zero));
+		}
+	}
+
+	// ra header in case A-flag is set, otherwise pvdraheader->used should be 0
+	if (p->AdvPvdAdvHeader) {
+		add_ra_header(pvdraheader, &p->ra_header_info, 0);
+		len += pvdraheader->used;
+	}
+	
+	// ugly repeat code in build_ra_option
+	if(p->AdvPrefixList) {
+		cur = add_ra_options_prefix(cur, iface, iface->props.name, p->AdvPrefixList, 0, dest);
+	}
+	if(p->AdvRouteList) {
+		cur = add_ra_options_route(cur, iface, p->AdvRouteList, 0, dest);
+	}
+	if(p->AdvRDNSSList) {
+		cur = add_ra_options_dnssl(cur, iface, p->AdvRDNSSList, 0, dest);
+	}
+	if(p->AdvLinkMTU != 0){
+		cur->next = new_safe_buffer_list();
+		cur = cur->next;
+		add_ra_option_mtu(cur->sb, p->AdvLinkMTU);
+	}
+	//TODO: add other options later on
+	// sum up the length of all safe buffer in pvdoptions sb list
+	cur = pvdoptions;
+	while(cur->next != NULL) { // cur stops at the last element of the linked list
+		len += cur->sb->used;
+		cur = cur->next;
+	}
+	len += cur->sb->used;
+	pvdid.nd_opt_pvdid_len = len;
+
+	//assemble everything together
+	sbl = safe_buffer_list_append(sbl);
+	safe_buffer_append(sbl->sb, pvdid, sizeof(pvdid));
+	
+	sbl = safe_buffer_list_append(sbl);
+	sbl->sb = fqdn;
+
+	sbl->next = pvdoptions;
+
+	return cur;
+}
+
+// TODO: the pvd part to be modified
 static struct safe_buffer_list *build_ra_options(struct Interface const *iface, struct in6_addr const *dest)
 {
 	struct safe_buffer_list *sbl = new_safe_buffer_list();
