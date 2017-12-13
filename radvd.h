@@ -286,7 +286,7 @@ struct AdvPvd {
 	struct AdvSllao sllao;
 	struct AdvMipv6 mipv6;
 	struct AdvLowpanCo *AdvLowpanCoList;
-	struct AdvAbro *AdvAbroList
+	struct AdvAbro *AdvAbroList;
 };
 
 
