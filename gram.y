@@ -375,7 +375,7 @@ pvdhead		: T_PVD STRING
 				if (iface->pvd_id_option) {
 					flog(LOG_WARNING, 
 						 "multiple PvD ID option found in interface %s,\
-						 only the last one is considered." iface->props.name);
+						 only the last one is considered.", iface->props.name);
 				}
 
 				pvd = malloc(sizeof(struct AdvPvd));
@@ -412,37 +412,38 @@ pvdparam	: T_AdvPvdIdSequenceNumber NUMBER ';'
 			}
 			// ra header info
 			// see if warning is needed when A-flag is not set and there is ra head options present
+			// maybe handle it during serialization
 			| T_AdvManagedFlag SWITCH ';'
 			{
-				pvd->ra_header_info.AdvManagedFlag = (pvd->AdvPvdAdvHeader) ? $2 : NULL;
+				pvd->ra_header_info.AdvManagedFlag = $2;
 			}
 			| T_AdvOtherConfigFlag SWITCH ';'
 			{
-				pvd->ra_header_info.AdvOtherConfigFlag = (pvd->AdvPvdAdvHeader) ? $2 : NULL;
+				pvd->ra_header_info.AdvOtherConfigFlag = $2;
 			}
 			| T_AdvReachableTime NUMBER ';'
 			{
-				pvd->ra_header_info.AdvReachableTime = (pvd->AdvPvdAdvHeader) ? $2 : NULL;
+				pvd->ra_header_info.AdvReachableTime = $2;
 			}
 			| T_AdvRetransTimer NUMBER ';'
 			{
-				pvd->ra_header_info.AdvRetransTimer = (pvd->AdvPvdAdvHeader) ? $2 : NULL;
+				pvd->ra_header_info.AdvRetransTimer = $2;
 			}
 			| T_AdvDefaultLifetime NUMBER ';'
 			{
-				pvd->ra_header_info.AdvDefaultLifetime = (pvd->AdvPvdAdvHeader) ? $2 : NULL;
+				pvd->ra_header_info.AdvDefaultLifetime = $2;
 			}
 			| T_AdvDefaultPreference SIGNEDNUMBER ';'
 			{
-				pvd->ra_header_info.AdvDefaultPreference = (pvd->AdvPvdAdvHeader) ? $2 : NULL;
+				pvd->ra_header_info.AdvDefaultPreference = $2;
 			}
 			| T_AdvCurHopLimit NUMBER ';'
 			{
-				pvd->ra_header_info.AdvCurHopLimit = (pvd->AdvPvdAdvHeader) ? $2 : NULL;
+				pvd->ra_header_info.AdvCurHopLimit = $2;
 			}
 			| T_AdvHomeAgentFlag SWITCH ';'
 			{
-				pvd->ra_header_info.AdvHomeAgentFlag = (pvd->AdvPvdAdvHeader) ? $2 : NULL;
+				pvd->ra_header_info.AdvHomeAgentFlag = $2;
 			}
 			// other classic RA options
 			| prefixdef
