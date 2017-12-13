@@ -165,7 +165,7 @@ struct Interface {
 	uint32_t AdvLinkMTU; /* XXX: sllao also has an if_maxmtu value...Why? */
 	uint32_t AdvRAMTU;   /* MTU used for RA */
 
-	struct Advsllao sllao;
+	struct AdvSllao sllao;
 
 	struct AdvMipv6 mipv6;
 
@@ -291,9 +291,6 @@ struct HomeAgentInfo {
 	uint16_t preference;
 	uint16_t lifetime;
 };
-
-
-
 
 /* Uclibc : include/netinet/icmpv6.h - Added by Bhadram*/
 #define ND_OPT_ARO 33
