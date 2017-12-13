@@ -54,7 +54,7 @@ void iface_init_defaults(struct Interface *iface)
 // TODO: ra_header_info is better to be a pointer type
 // TODO: very redundent code with the Interface struct, do better
 void pvd_init_defaults(struct AdvPvd *p) {
-	memset(p, 0 sizeof(struct AdvPvd));
+	memset(p, 0, sizeof(struct AdvPvd));
 
 	p->AdvPvdId[0] = '\0';
 	p->AdvPvdIdSeq = 0;
