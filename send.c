@@ -37,8 +37,6 @@ static void add_ra_option_mipv6_rtr_adv_interval(struct safe_buffer *sb, double 
 static void add_ra_option_mipv6_home_agent_info(struct safe_buffer *sb, struct AdvMipv6 const *mipv6);
 static void add_ra_option_lowpanco(struct safe_buffer *sb, struct AdvLowpanCo const *lowpanco);
 static void add_ra_option_abro(struct safe_buffer *sb, struct AdvAbro const *abroo);
-// TODO: to be modified
-static void add_ra_option_pvdid(struct safe_buffer *sb, const char *pvdid, int seq, int h, int l);
 
 // Options that generate 0 or more blocks
 static struct safe_buffer_list *add_ra_options_prefix(struct safe_buffer_list *sbl, struct Interface const *iface,
@@ -50,6 +48,8 @@ static struct safe_buffer_list *add_ra_options_rdnss(struct safe_buffer_list *sb
 						     struct AdvRDNSS const *rdnss, int cease_adv, struct in6_addr const *dest);
 static struct safe_buffer_list *add_ra_options_dnssl(struct safe_buffer_list *sbl, struct Interface const *iface,
 						     struct AdvDNSSL const *dnssl, int cease_adv, struct in6_addr const *dest);
+static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl, struct Interface const *iface,
+							  char const *ifname, struct AdvPvd const *p, struct in6_addr const *dest);
 
 // Scheduling of options per RFC7772
 static int schedule_helper(struct in6_addr const *dest, struct Interface const *iface, int option_lifetime);
@@ -645,46 +645,13 @@ static void add_ra_option_abro(struct safe_buffer *sb, struct AdvAbro const *abr
 	safe_buffer_append(sb, &abro, sizeof(abro));
 }
 
-static void add_ra_option_pvdid(struct safe_buffer *sb, const char *id, int seq, int h, int l)
-{
-	int len = 0;
-	int bytes;
-	int padding;
-	struct nd_opt_pvdid pvdid;
-	struct safe_buffer *fqdn = new_safe_buffer();
-
-	memset(&pvdid, 0, sizeof(pvdid));
-
-	pvdid.nd_opt_pvdid_type = ND_OPT_PVDID;
-	pvdid.nd_opt_pvdid_len = 0;	/* will be updated below */
-	pvdid.nd_opt_pvdid_sequence = htons(seq);
-	pvdid.nd_opt_pvdid_flags = htons((h << 15) | (l << 14));
-
-	safe_buffer_resize(fqdn, fqdn->used + strlen(id) + 1);
-	len += safe_buffer_append(fqdn, id, strlen(id) + 1);
-
-	bytes = sizeof(pvdid) + len;
-	pvdid.nd_opt_pvdid_len = (bytes + 7) / 8;
-	padding = pvdid.nd_opt_pvdid_len * 8 - bytes;
-	safe_buffer_resize(sb, sb->used + sizeof(pvdid) + len + padding);
-	safe_buffer_append(sb, &pvdid, sizeof(pvdid));
-	safe_buffer_append(sb, fqdn->buffer, fqdn->used);
-	safe_buffer_pad(sb, padding);
-
-	safe_buffer_free(fqdn);
-
-	dlog(LOG_ERR, 4, "pvdid : option len = %d, buffer size = %lu\n", pvdid.nd_opt_pvdid_len, sb->used);
-
-	return;
-}
-
 static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl, 
 													struct Interface const *iface,
 													struct cost *ifname, 
 													struct AdvPvd *p, 
 													struct in6_addr *dest) {
 	
-	int len = 6; // type +length + flag +seq = 6 bytes minum as size
+	int len = 6; // type +length + flag +seq = 6 bytes minumum as size
 	int bytes;
 	int padding;
 	struct nd_opt_pvdid pvdid;
@@ -696,13 +663,13 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 	memset(&pvdid, 0, sizeof(pvdid));
 
 	pvdid.nd_opt_pvdid_type = ND_OPT_PVDID;
-	pvdid.nd_opt_pvdid_len = 0;	/* will be updated below */
+	pvdid.nd_opt_pvdid_len = 0;	/* will be updated when we know the rest */
 	pvdid.nd_opt_pvdid_sequence = htons(p->AdvPvdIdSeq);
 	pvdid.nd_opt_pvdid_flags = htons((p->AdvPvdIdHttpExtraInfo << 15) |
 									 (p->AdvPvdIdLegacy << 14) |
 									 (p-> AdvPvdAdvHeader << 13));
 
-	// ugly repeat code in serialize_domain_names to format PvD ID wich is a FQDN
+	// ugly repeating code in serialize_domain_names to format PvD ID wich is a FQDN
 	char *label = p->AdvPvdId;
 	while(label[0] != '\0') {
 		unsigned char label_len;
@@ -710,8 +677,9 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 		if (strchr(label, '.') == NULL)
 			label_len = (unsigned char)strlen(label);
 		else
-			label_len = (unsigned char)(strchr(label, '.') - label)
+			label_len = (unsigned char)(strchr(label, '.') - label);
 
+		// it seems that this magic get padding done
 		safe_buffer_resize(fqdn, safe_buffer->used + sizeof(label_len) + label_len + 8);
 		len += safe_buffer_append(fqdn, &label_len, sizeof(label_len));
 		len += safe_buffer_append(fqdn, label, label_len);
@@ -728,13 +696,15 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 		}
 	}
 
-	// ra header in case A-flag is set, otherwise pvdraheader->used should be 0
+	// ra header in case A-flag is set
+	// disregard the iface status info adv cease flag, set manually to 0
 	if (p->AdvPvdAdvHeader) {
 		add_ra_header(pvdraheader, &p->ra_header_info, 0);
 		len += pvdraheader->used;
 	}
 	
-	// ugly repeat code in build_ra_option
+	// ugly repeating code in build_ra_option
+	// disregard the iface status info adv cease flag, set manually to 0
 	if(p->AdvPrefixList) {
 		cur = add_ra_options_prefix(cur, iface, iface->props.name, p->AdvPrefixList, 0, dest);
 	}
@@ -749,43 +719,48 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 		cur = cur->next;
 		add_ra_option_mtu(cur->sb, p->AdvLinkMTU);
 	}
-	//TODO: add other options later on
-	// sum up the length of all safe buffer in pvdoptions sb list
+	// Seems that AdvRAMTU is not used here, may in RA message segmentation rather
+	// TODO: add other options ra options later on
+	// TODO: have to ensure somehow when RA segmentation happens, the PvD ID option must present
+	// in each segment
+
+	// sum up the length of all options
 	cur = pvdoptions;
-	while(cur->next != NULL) { // cur stops at the last element of the linked list
+	while(cur && cur->next != NULL) { // stops at the last element of the linked list
 		len += cur->sb->used;
 		cur = cur->next;
 	}
-	len += cur->sb->used;
+	len += cur ? cur->sb->used : 0; // in case cur/pvdoptions is NULL, add 0 to total length
 	pvdid.nd_opt_pvdid_len = len;
 
 	//assemble everything together
 	sbl = safe_buffer_list_append(sbl);
 	safe_buffer_append(sbl->sb, pvdid, sizeof(pvdid));
-	
+
 	sbl = safe_buffer_list_append(sbl);
 	sbl->sb = fqdn;
 
-	sbl->next = pvdoptions;
+	if (pvdraheader) {
+		sbl = safe_buffer_list_append(sbl);
+		sbl->sb = pvdraheader;
+	}
 
-	return cur;
+	if (pvdoptions) {
+		sbl->next = pvdoptions;
+		return cur;
+	} else {
+		return sbl;
+	}
+
 }
 
-// TODO: the pvd part to be modified
 static struct safe_buffer_list *build_ra_options(struct Interface const *iface, struct in6_addr const *dest)
 {
 	struct safe_buffer_list *sbl = new_safe_buffer_list();
 	struct safe_buffer_list *cur = sbl;
 
-	if (iface->AdvPvdId[0] != '\0') {
-		cur->next = new_safe_buffer_list();
-		cur = cur->next;
-		add_ra_option_pvdid(
-			cur->sb,
-			iface->AdvPvdId,
-			iface->AdvPvdIdSeq,
-			iface->AdvPvdIdHttpExtraInfo,
-			iface->AdvPvdIdLegacy);
+	if (iface->pvd_id_option) {
+		cur = add_ra_option_pvdid(cur, iface, iiface->props.name, iface->pvd_id_option, dest);
 	}
 
 	if (iface->AdvPrefixList) {
