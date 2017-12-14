@@ -652,6 +652,8 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 													struct in6_addr const *dest) {
 	
 	int len = 6; // type +length + flag +seq = 6 bytes minumum as size
+	int bytes = 0;
+	int padding_in_byte = 0;
 	struct nd_opt_pvdid pvdid;
 	struct safe_buffer *fqdn = new_safe_buffer();
 	struct safe_buffer *pvdraheader = new_safe_buffer();
@@ -677,8 +679,7 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 		else
 			label_len = (unsigned char)(strchr(label, '.') - label);
 
-		// it seems that this magic get padding done
-		safe_buffer_resize(fqdn, fqdn->used + sizeof(label_len) + label_len + 10);
+		//safe_buffer_resize(fqdn, fqdn->used + sizeof(label_len) + label_len + 10);
 		len += safe_buffer_append(fqdn, &label_len, sizeof(label_len));
 		len += safe_buffer_append(fqdn, label, label_len);
 
@@ -693,6 +694,11 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 			len+= safe_buffer_append(fqdn, &zero, sizeof(zero));
 		}
 	}
+
+	// handle padding
+	bytes = len + fqdn->used;
+	padding_in_byte = (bytes + 7)/8 * 8 - bytes;
+	safe_buffer_pad(fqdn, padding_in_byte);
 
 	// ra header in case A-flag is set
 	// disregard the iface status info adv cease flag, set manually to 0
