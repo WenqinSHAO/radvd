@@ -363,7 +363,7 @@ ifaceval	: T_MinRtrAdvInterval NUMBER ';'
 		}
 		;
 
-pvdidoption : pvdhead '{' pvdparams '}'
+pvdidoption : pvdhead '{' pvdparams '}' ';'
 			{
 				$$ = pvd;
 				pvd = NULL;
