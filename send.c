@@ -679,7 +679,6 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 		else
 			label_len = (unsigned char)(strchr(label, '.') - label);
 
-		//safe_buffer_resize(fqdn, fqdn->used + sizeof(label_len) + label_len + 10);
 		safe_buffer_append(fqdn, &label_len, sizeof(label_len));
 		safe_buffer_append(fqdn, label, label_len);
 
@@ -728,8 +727,10 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 		cur = cur->next;
 		add_ra_option_mtu(cur->sb, p->AdvLinkMTU);
 	}
-	// Seems that AdvRAMTU is not used here, may in RA message segmentation rather
+	// Seems that AdvRAMTU is not used here, maybe in RA message segmentation rather
 	// TODO: add other options ra options later on
+	// TODO: design pattern not optimal, everytime a new option add to RA, 
+	// the pvdid code has to be changed as well...
 	// TODO: have to ensure somehow when RA segmentation happens, the PvD ID option must present
 	// in each segment
 
