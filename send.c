@@ -718,7 +718,10 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 		cur = add_ra_options_route(cur, iface, p->AdvRouteList, 0, dest);
 	}
 	if(p->AdvRDNSSList) {
-		cur = add_ra_options_dnssl(cur, iface, p->AdvRDNSSList, 0, dest);
+		cur = add_ra_options_rdnss(cur, iface, p->AdvRDNSSList, 0, dest);
+	}
+	if(p->AdvDNSSLList) {
+		cur = add_ra_options_dnssl(cur, iface, p->AdvDNSSLList, 0, dest);
 	}
 	if(p->AdvLinkMTU != 0){
 		cur->next = new_safe_buffer_list();
