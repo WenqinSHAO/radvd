@@ -729,7 +729,7 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 		cur = cur->next;
 	}
 	len += cur ? cur->sb->used : 0; // in case cur/pvdoptions is NULL, add 0 to total length
-	pvdid.nd_opt_pvdid_len = len;
+	pvdid.nd_opt_pvdid_len = len/8;
 
 	//assemble everything together
 	sbl = safe_buffer_list_append(sbl);
