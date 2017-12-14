@@ -680,8 +680,8 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 			label_len = (unsigned char)(strchr(label, '.') - label);
 
 		//safe_buffer_resize(fqdn, fqdn->used + sizeof(label_len) + label_len + 10);
-		len += safe_buffer_append(fqdn, &label_len, sizeof(label_len));
-		len += safe_buffer_append(fqdn, label, label_len);
+		safe_buffer_append(fqdn, &label_len, sizeof(label_len));
+		safe_buffer_append(fqdn, label, label_len);
 
 		label += label_len;
 
@@ -691,7 +691,7 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 
 		if (label[0] == '\0') {
 			char zero = 0;
-			len+= safe_buffer_append(fqdn, &zero, sizeof(zero));
+			safe_buffer_append(fqdn, &zero, sizeof(zero));
 		}
 	}
 
