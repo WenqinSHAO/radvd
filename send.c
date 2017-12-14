@@ -700,6 +700,8 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 	padding_in_byte = (bytes + 7)/8 * 8 - bytes;
 	safe_buffer_pad(fqdn, padding_in_byte);
 
+	len += fqdn->used;
+
 	// ra header in case A-flag is set
 	// disregard the iface status info adv cease flag, set manually to 0
 	if (p->AdvPvdAdvHeader) {
