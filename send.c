@@ -536,7 +536,7 @@ static struct safe_buffer_list *add_ra_options_dnssl(struct safe_buffer_list *sb
 /*
  * add Source Link-layer Address option
  */
-static void add_ra_option_sllao(struct safe_buffer *sb, struct sllao const *sllao)
+static void add_ra_option_sllao(struct safe_buffer *sb, struct PvdSllao const *sllao)
 {
 	/* +2 for the ND_OPT_SOURCE_LINKADDR and the length (each occupy one byte) */
 	size_t const sllao_bytes = (sllao->if_hwaddr_len / 8) + 2;
@@ -594,7 +594,7 @@ static void add_ra_option_mipv6_rtr_adv_interval(struct safe_buffer *sb, double 
  * Mobile IPv6 ext: Home Agent Information Option to support
  * Dynamic Home Agent Address Discovery
  */
-static void add_ra_option_mipv6_home_agent_info(struct safe_buffer *sb, struct mipv6 const *mipv6)
+static void add_ra_option_mipv6_home_agent_info(struct safe_buffer *sb, struct AdvMipv6 const *mipv6)
 {
 	struct HomeAgentInfo ha_info;
 
@@ -647,13 +647,11 @@ static void add_ra_option_abro(struct safe_buffer *sb, struct AdvAbro const *abr
 
 static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl, 
 													struct Interface const *iface,
-													struct cost *ifname, 
+													struct const *ifname, 
 													struct AdvPvd *p, 
 													struct in6_addr *dest) {
 	
 	int len = 6; // type +length + flag +seq = 6 bytes minumum as size
-	int bytes;
-	int padding;
 	struct nd_opt_pvdid pvdid;
 	struct safe_buffer *fqdn = new_safe_buffer();
 	struct safe_buffer *pvdraheader = new_safe_buffer();
@@ -680,7 +678,7 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 			label_len = (unsigned char)(strchr(label, '.') - label);
 
 		// it seems that this magic get padding done
-		safe_buffer_resize(fqdn, safe_buffer->used + sizeof(label_len) + label_len + 8);
+		safe_buffer_resize(fqdn, fqdn->used + sizeof(label_len) + label_len + 8);
 		len += safe_buffer_append(fqdn, &label_len, sizeof(label_len));
 		len += safe_buffer_append(fqdn, label, label_len);
 
@@ -735,7 +733,7 @@ static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl
 
 	//assemble everything together
 	sbl = safe_buffer_list_append(sbl);
-	safe_buffer_append(sbl->sb, pvdid, sizeof(pvdid));
+	safe_buffer_append(sbl->sb, &pvdid, sizeof(pvdid));
 
 	sbl = safe_buffer_list_append(sbl);
 	sbl->sb = fqdn;
@@ -760,7 +758,7 @@ static struct safe_buffer_list *build_ra_options(struct Interface const *iface, 
 	struct safe_buffer_list *cur = sbl;
 
 	if (iface->pvd_id_option) {
-		cur = add_ra_option_pvdid(cur, iface, iiface->props.name, iface->pvd_id_option, dest);
+		cur = add_ra_option_pvdid(cur, iface, iface->props.name, iface->pvd_id_option, dest);
 	}
 
 	if (iface->AdvPrefixList) {
