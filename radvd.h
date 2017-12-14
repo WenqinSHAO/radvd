@@ -319,7 +319,7 @@ struct nd_opt_6co {
 }; /*Added by Bhadram */
 
 /* PvD ID extension */
-#define ND_OPT_PVDID 253	/* Reserved : waiting for IANA attribution */
+#define ND_OPT_PVDID 254	/* Reserved : waiting for IANA attribution */
 
 struct nd_opt_pvdid {
 	uint8_t nd_opt_pvdid_type;
