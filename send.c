@@ -536,7 +536,7 @@ static struct safe_buffer_list *add_ra_options_dnssl(struct safe_buffer_list *sb
 /*
  * add Source Link-layer Address option
  */
-static void add_ra_option_sllao(struct safe_buffer *sb, struct AvdSllao const *sllao)
+static void add_ra_option_sllao(struct safe_buffer *sb, struct AdvSllao const *sllao)
 {
 	/* +2 for the ND_OPT_SOURCE_LINKADDR and the length (each occupy one byte) */
 	size_t const sllao_bytes = (sllao->if_hwaddr_len / 8) + 2;
@@ -648,8 +648,8 @@ static void add_ra_option_abro(struct safe_buffer *sb, struct AdvAbro const *abr
 static struct safe_buffer_list *add_ra_option_pvdid(struct safe_buffer_list *sbl, 
 													struct Interface const *iface,
 													char const *ifname, 
-													struct AdvPvd *p, 
-													struct in6_addr *dest) {
+													struct AdvPvd const *p, 
+													struct in6_addr const *dest) {
 	
 	int len = 6; // type +length + flag +seq = 6 bytes minumum as size
 	struct nd_opt_pvdid pvdid;
