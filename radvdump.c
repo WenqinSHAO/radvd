@@ -457,7 +457,7 @@ static void print_ff(unsigned char *msg, int len, struct sockaddr_in6 *addr, int
 			// the last label length is 0, thus the stop critera
 				offset ++;
 				strncat(pvd_name, (char *)&pvdid->nd_opt_pvdid_name[offset], label_len);
-				strcat(pvd_name, ".")
+				strcat(pvd_name, ".");
 				offset += label_len;
 				label_len = pvdid->nd_opt_pvdid_name[offset];
 			}
@@ -468,7 +468,7 @@ static void print_ff(unsigned char *msg, int len, struct sockaddr_in6 *addr, int
 			printf("\t\tAdvPvdIdLegacy %s;\n", l ? "on" : "off");
 			printf("\t\tAdvPvdAdvHeader %s;\n", a ? "on" : "off");
 			if (pvd_len - offset - 6 >= 8)
-				printf("\t\tOther options are present in this PvD\n")
+				printf("\t\tOther options are present in this PvD\n");
 			printf("\t]; # End of PVD definition\n\n");
 
 			break;
