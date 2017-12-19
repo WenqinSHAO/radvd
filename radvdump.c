@@ -469,7 +469,7 @@ static void print_ff(unsigned char *msg, int len, struct sockaddr_in6 *addr, int
 			printf("\t\tAdvPvdAdvHeader %s;\n", a ? "on" : "off");
 			if (pvd_len - offset - 6 >= 8)
 				printf("\t\tOther options are present in this PvD\n");
-			printf("\t]; # End of PVD definition\n\n");
+			printf("\t}; # End of PVD definition\n\n");
 
 			break;
 		}
