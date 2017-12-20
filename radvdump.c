@@ -439,18 +439,37 @@ static void print_ff(unsigned char *msg, int len, struct sockaddr_in6 *addr, int
 		}
 		case ND_OPT_PVDID : {
 			struct nd_opt_pvdid *pvdid = (struct nd_opt_pvdid *) opt_str;
-			int seq, h, l;
+			int seq, h, l, a;
+			char pvd_name[256] = {""};
+			int pvd_len = pvdid->nd_opt_pvdid_len << 3; // total length of option in unit of bytes
 			uint16_t flags = ntohs(pvdid->nd_opt_pvdid_flags);
 
+			// handle pvdid sequence and flags
 			seq = ntohs(pvdid->nd_opt_pvdid_sequence);
 			h = (flags >> 15) & 0x01;
 			l = (flags >> 14) & 0x01;
+			a = (flags >> 13) & 0x01;
 
-			//printf("\n\tpvd %s {\n", pvdid->nd_opt_pvdid_name);
+			// extract pvdid
+			int offset = 0;
+			int label_len = pvdid->nd_opt_pvdid_name[offset];
+			while(label_len > 0) {
+			// the last label length is 0, thus the stop critera
+				offset ++;
+				strncat(pvd_name, (char *)&pvdid->nd_opt_pvdid_name[offset], label_len);
+				strcat(pvd_name, ".");
+				offset += label_len;
+				label_len = pvdid->nd_opt_pvdid_name[offset];
+			}
+			
+			printf("\n\tpvd %s {\n", pvd_name);
 			printf("\t\tAdvPvdIdSequenceNumber %d;\n", seq);
 			printf("\t\tAdvPvdIdHttpExtraInfo %s;\n", h ? "on" : "off");
 			printf("\t\tAdvPvdIdLegacy %s;\n", l ? "on" : "off");
-			printf("\t]; # End of PVD definition\n\n");
+			printf("\t\tAdvPvdAdvHeader %s;\n", a ? "on" : "off");
+			if (pvd_len - offset - 6 >= 8)
+				printf("\t\tOther options are present in this PvD\n");
+			printf("\t}; # End of PVD definition\n\n");
 
 			break;
 		}
