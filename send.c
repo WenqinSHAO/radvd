@@ -769,10 +769,6 @@ static struct safe_buffer_list *build_ra_options(struct Interface const *iface, 
 	struct safe_buffer_list *sbl = new_safe_buffer_list();
 	struct safe_buffer_list *cur = sbl;
 
-	if (iface->pvd_id_option) {
-		cur = add_ra_option_pvdid(cur, iface, iface->props.name, iface->pvd_id_option, dest);
-	}
-
 	if (iface->AdvPrefixList) {
 		cur =
 		    add_ra_options_prefix(cur, iface, iface->props.name, iface->AdvPrefixList, iface->state_info.cease_adv, dest);
@@ -826,6 +822,10 @@ static struct safe_buffer_list *build_ra_options(struct Interface const *iface, 
 		cur->next = new_safe_buffer_list();
 		cur = cur->next;
 		add_ra_option_abro(cur->sb, iface->AdvAbroList);
+	}
+
+	if (iface->pvd_id_option) {
+		cur = add_ra_option_pvdid(cur, iface, iface->props.name, iface->pvd_id_option, dest);
 	}
 
 	// Return the root of the list
